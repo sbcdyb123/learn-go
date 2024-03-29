@@ -2,6 +2,7 @@
 package app
 
 import (
+	"fmt"
 	"gohub/pkg/config"
 )
 
@@ -14,5 +15,6 @@ func IsProduction() bool {
 }
 
 func IsTesting() bool {
+	fmt.Println("123")
 	return config.Get("app.env") == "testing"
 }
