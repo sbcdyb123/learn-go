@@ -1,4 +1,4 @@
-module CPP
+module gohub
 
 go 1.22.1
 
