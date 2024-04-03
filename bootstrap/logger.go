@@ -1,8 +1,8 @@
 package bootstrap
 
 import (
-	"gohub/pkg/config"
-	"gohub/pkg/logger"
+	"gocms/pkg/config"
+	"gocms/pkg/logger"
 )
 
 // SetupLogger 初始化 Logger

@@ -3,12 +3,12 @@ package bootstrap
 import (
 	"errors"
 	"fmt"
-	"gohub/pkg/config"
-	"gohub/pkg/database"
-	"gohub/pkg/logger"
+	"gocms/pkg/config"
+	"gocms/pkg/database"
+	"gocms/pkg/logger"
 	"time"
 
-	"gohub/app/models/user"
+	"gocms/app/models/user"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/sqlite"

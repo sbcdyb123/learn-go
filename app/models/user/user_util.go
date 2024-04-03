@@ -1,7 +1,7 @@
 package user
 
 import (
-	"gohub/pkg/database"
+	"gocms/pkg/database"
 )
 
 // IsEmailExist 判断 Email 已被注册

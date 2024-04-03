@@ -2,7 +2,7 @@
 package config
 
 import (
-	"gohub/pkg/helpers"
+	"gocms/pkg/helpers"
 	"os"
 
 	"github.com/spf13/cast"

@@ -2,9 +2,9 @@
 package auth
 
 import (
-	v1 "gohub/app/http/controllers/api/v1"
-	"gohub/app/models/user"
-	"gohub/app/requests"
+	v1 "gocms/app/http/controllers/api/v1"
+	"gocms/app/models/user"
+	"gocms/app/requests"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

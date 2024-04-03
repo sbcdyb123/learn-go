@@ -3,7 +3,7 @@ package logger
 import (
 	"context"
 	"errors"
-	"gohub/pkg/helpers"
+	"gocms/pkg/helpers"
 	"path/filepath"
 	"runtime"
 	"strings"

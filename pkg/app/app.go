@@ -3,7 +3,7 @@ package app
 
 import (
 	"fmt"
-	"gohub/pkg/config"
+	"gocms/pkg/config"
 )
 
 func IsLocal() bool {
@@ -15,6 +15,6 @@ func IsProduction() bool {
 }
 
 func IsTesting() bool {
-	fmt.Println("123")
+	fmt.Println("123123")
 	return config.Get("app.env") == "testing"
 }

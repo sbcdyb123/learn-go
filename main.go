@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"gohub/bootstrap"
-	btsConfig "gohub/config"
-	"gohub/pkg/config"
+	"gocms/bootstrap"
+	btsConfig "gocms/config"
+	"gocms/pkg/config"
 
 	"github.com/gin-gonic/gin"
 )
@@ -37,6 +37,9 @@ func main() {
 
 	// 初始化 DB
 	bootstrap.SetupDB()
+
+	// 初始化 Redis
+	bootstrap.SetupRedis()
 
 	// 初始化路由绑定
 	bootstrap.SetupRoute(router)

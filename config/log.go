@@ -1,6 +1,6 @@
 package config
 
-import "gohub/pkg/config"
+import "gocms/pkg/config"
 
 func init() {
 	config.Add("log", func() map[string]interface{} {

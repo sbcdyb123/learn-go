@@ -3,8 +3,8 @@ package middlewares
 
 import (
 	"bytes"
-	"gohub/pkg/helpers"
-	"gohub/pkg/logger"
+	"gocms/pkg/helpers"
+	"gocms/pkg/logger"
 	"io"
 	"time"
 

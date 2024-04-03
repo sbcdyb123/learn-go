@@ -1,7 +1,7 @@
 package middlewares
 
 import (
-	"gohub/pkg/logger"
+	"gocms/pkg/logger"
 	"net"
 	"net/http"
 	"net/http/httputil"
