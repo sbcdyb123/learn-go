@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"gocms/app/cmd"
+	"gocms/app/cmd/make"
 	"gocms/bootstrap"
 	btsConig "gocms/config"
 	"gocms/pkg/config"
@@ -49,6 +50,7 @@ func main() {
 		cmd.CmdServe,
 		cmd.CmdKey,
 		cmd.CmdPlay,
+		make.CmdMake,
 	)
 
 	// 配置默认运行 Web 服务
