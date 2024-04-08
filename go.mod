@@ -3,8 +3,10 @@ module gocms
 go 1.22.1
 
 require (
+	github.com/gertd/go-pluralize v0.2.1
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-redis/redis/v8 v8.11.5
+	github.com/iancoleman/strcase v0.3.0
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d
 	github.com/spf13/cast v1.6.0
 	github.com/spf13/cobra v1.8.0
