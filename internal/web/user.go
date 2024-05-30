@@ -4,15 +4,18 @@ import (
 	"fmt"
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-gonic/gin"
+	"github.com/sbcdyb123/learn-go/internal/domain"
+	"github.com/sbcdyb123/learn-go/internal/service"
 	"net/http"
 )
 
 type UserHandler struct {
+	svc         *service.UserService
 	emailExp    *regexp.Regexp
 	passwordExp *regexp.Regexp
 }
 
-func NewUserHandler() *UserHandler {
+func NewUserHandler(svc *service.UserService) *UserHandler {
 	const (
 		emailRegexPattern    = "^\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*$"
 		passwordRegexPattern = `^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,}$`
@@ -20,6 +23,7 @@ func NewUserHandler() *UserHandler {
 	emailExp := regexp.MustCompile(emailRegexPattern, regexp.None)
 	passwordExp := regexp.MustCompile(passwordRegexPattern, regexp.None)
 	return &UserHandler{
+		svc:         svc,
 		emailExp:    emailExp,
 		passwordExp: passwordExp,
 	}
@@ -70,6 +74,14 @@ func (u *UserHandler) Signup(c *gin.Context) {
 		c.String(http.StatusOK, "密码必须大于8位，且包含大小写字母、数字和特殊符号")
 	}
 	fmt.Printf("req:%+v\n", req)
+	err = u.svc.SignUp(c.Request.Context(), domain.User{
+		Email:    req.Email,
+		Password: req.Password,
+	})
+	if err != nil {
+		c.String(http.StatusOK, "系统错误")
+		return
+	}
 	c.String(http.StatusOK, "注册成功")
 }
 func (u *UserHandler) Login(c *gin.Context) {
