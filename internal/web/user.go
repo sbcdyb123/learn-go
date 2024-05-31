@@ -1,12 +1,14 @@
 package web
 
 import (
+	"errors"
 	"fmt"
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-gonic/gin"
 	"github.com/sbcdyb123/learn-go/internal/domain"
 	"github.com/sbcdyb123/learn-go/internal/service"
 	"net/http"
+	"time"
 )
 
 type UserHandler struct {
@@ -78,6 +80,11 @@ func (u *UserHandler) Signup(c *gin.Context) {
 		Email:    req.Email,
 		Password: req.Password,
 	})
+	if errors.Is(err, service.ErrUserDuplicateEmail) {
+		c.String(http.StatusOK, "邮箱已存在")
+		return
+	}
+
 	if err != nil {
 		c.String(http.StatusOK, "系统错误")
 		return
@@ -85,10 +92,55 @@ func (u *UserHandler) Signup(c *gin.Context) {
 	c.String(http.StatusOK, "注册成功")
 }
 func (u *UserHandler) Login(c *gin.Context) {
+	type LoginReq struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	var req LoginReq
+	if err := c.Bind(&req); err != nil {
+		return
+	}
+	_, err := u.svc.Login(c.Request.Context(), req.Email, req.Password)
+	if errors.Is(err, service.ErrInvalidUserOrPassword) {
+		c.String(http.StatusOK, "用户名或密码错误")
+		return
+	}
+	if err != nil {
+		c.String(http.StatusOK, "系统错误")
+		return
+	}
+	c.String(http.StatusOK, "登录成功")
 
 }
 func (u *UserHandler) Edit(c *gin.Context) {
-
+	type EditReq struct {
+		Id       int64  `json:"id"`
+		Username string `json:"username"`
+		//	生日
+		BirthDay string `json:"birthDay"`
+		// 个人简介
+		Intro string `json:"intro"`
+	}
+	var req EditReq
+	if err := c.Bind(&req); err != nil {
+		return
+	}
+	birthDay, err := time.Parse("2006-01-02", req.BirthDay)
+	if err != nil {
+		c.String(http.StatusOK, "生日格式错误")
+		return
+	}
+	err = u.svc.Edit(c.Request.Context(), domain.User{
+		Id:       req.Id,
+		Username: req.Username,
+		BirthDay: birthDay.UnixMilli(),
+		Intro:    req.Intro,
+	})
+	if err != nil {
+		c.String(http.StatusOK, "系统错误")
+		return
+	}
+	c.String(http.StatusOK, "修改成功")
 }
 func (u *UserHandler) Profile(c *gin.Context) {
 
