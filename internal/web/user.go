@@ -5,6 +5,7 @@ import (
 	"fmt"
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/sbcdyb123/learn-go/internal/domain"
 	"github.com/sbcdyb123/learn-go/internal/service"
 	"net/http"
@@ -100,7 +101,7 @@ func (u *UserHandler) Login(c *gin.Context) {
 	if err := c.Bind(&req); err != nil {
 		return
 	}
-	_, err := u.svc.Login(c.Request.Context(), req.Email, req.Password)
+	user, err := u.svc.Login(c.Request.Context(), req.Email, req.Password)
 	if errors.Is(err, service.ErrInvalidUserOrPassword) {
 		c.String(http.StatusOK, "用户名或密码错误")
 		return
@@ -109,7 +110,24 @@ func (u *UserHandler) Login(c *gin.Context) {
 		c.String(http.StatusOK, "系统错误")
 		return
 	}
-	c.String(http.StatusOK, "登录成功")
+	claims := UserClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
+		},
+		UserId: user.Id,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
+	tokenStr, err := token.SignedString([]byte("95osj3fUD7fo0mlYdDbncXz4VD2igvf0"))
+	if err != nil {
+		c.String(http.StatusOK, "系统错误")
+		return
+	}
+
+	c.Header("x-jwt-token", tokenStr)
+	//fmt.Println(tokenStr)
+	//c.JSON(http.StatusOK, gin.H{
+	//	"token": tokenStr,
+	//})
 
 }
 func (u *UserHandler) Edit(c *gin.Context) {
@@ -143,5 +161,22 @@ func (u *UserHandler) Edit(c *gin.Context) {
 	c.String(http.StatusOK, "修改成功")
 }
 func (u *UserHandler) Profile(c *gin.Context) {
+	cl, ok := c.Get("claims")
+	if !ok {
+		c.String(http.StatusOK, "系统错误")
+		return
+	}
+	claims, ok := cl.(*UserClaims)
+	if !ok {
+		c.String(http.StatusOK, "系统错误")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"userId": claims.UserId,
+	})
+}
 
+type UserClaims struct {
+	jwt.RegisteredClaims
+	UserId int64
 }
