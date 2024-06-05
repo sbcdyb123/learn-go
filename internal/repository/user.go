@@ -3,7 +3,9 @@ package repository
 import (
 	"context"
 	"github.com/sbcdyb123/learn-go/internal/domain"
+	"github.com/sbcdyb123/learn-go/internal/repository/cache"
 	"github.com/sbcdyb123/learn-go/internal/repository/dao"
+	"log"
 )
 
 var (
@@ -12,12 +14,14 @@ var (
 )
 
 type UserRepository struct {
-	dao *dao.UserDao
+	dao   *dao.UserDao
+	cache *cache.UserCache
 }
 
-func NewUserRepository(dao *dao.UserDao) *UserRepository {
+func NewUserRepository(dao *dao.UserDao, c *cache.UserCache) *UserRepository {
 	return &UserRepository{
-		dao: dao,
+		dao:   dao,
+		cache: c,
 	}
 }
 
@@ -47,4 +51,31 @@ func (r *UserRepository) Updates(ctx context.Context, u domain.User) error {
 		Intro:    u.Intro,
 	})
 	return err
+}
+func (r *UserRepository) FindById(ctx context.Context, id int64) (domain.User, error) {
+	// 先从缓存中查找
+	u, err := r.cache.Get(ctx, id)
+	if err == nil {
+		return u, nil
+	}
+	u1, err := r.dao.FindByID(ctx, id)
+	if err != nil {
+		return domain.User{}, err
+	}
+	// 更新缓存
+	u = domain.User{
+		Id:       u1.Id,
+		Email:    u1.Email,
+		Password: u1.Password,
+		Username: u1.Username,
+		BirthDay: u1.BirthDay,
+		Intro:    u1.Intro,
+	}
+	go func() {
+		err = r.cache.Set(ctx, u)
+		if err != nil {
+			log.Println("cache set error:", err)
+		}
+	}()
+	return u, err
 }

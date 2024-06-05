@@ -53,3 +53,6 @@ func (svc *UserService) Edit(ctx context.Context, user domain.User) error {
 	}
 	return nil
 }
+func (svc *UserService) Profile(ctx context.Context, userId int64) (domain.User, error) {
+	return svc.repo.FindById(ctx, userId)
+}
