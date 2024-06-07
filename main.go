@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"github.com/sbcdyb123/learn-go/config"
 	"github.com/sbcdyb123/learn-go/internal/repository"
+	"github.com/sbcdyb123/learn-go/internal/repository/cache"
 	"github.com/sbcdyb123/learn-go/internal/repository/dao"
 	"github.com/sbcdyb123/learn-go/internal/service"
+	"github.com/sbcdyb123/learn-go/internal/service/sms/memory"
 	"github.com/sbcdyb123/learn-go/internal/web"
 	"github.com/sbcdyb123/learn-go/internal/web/middleware"
 	"github.com/sbcdyb123/learn-go/pkg/ginx/middlewares/ratelimit"
@@ -20,7 +23,8 @@ import (
 func main() {
 	db := initDB()
 	server := initServer()
-	u := initUser(db)
+	rdb := initRedis()
+	u := initUser(db, rdb)
 	u.RegisterRoutes(server)
 	server.GET("/ping", func(context *gin.Context) {
 		context.JSON(200, gin.H{
@@ -49,16 +53,33 @@ func initServer() *gin.Engine {
 		},
 		MaxAge: 12 * time.Hour,
 	}))
-	server.Use(middleware.NewLoginMiddlewareBuilder().IgnorePaths("/user/signup").IgnorePaths("/user/login").Build())
+	server.Use(middleware.NewLoginMiddlewareBuilder().IgnorePaths("/user/signup").IgnorePaths("/user/login").IgnorePaths("/user/login_sms/code/send").
+		IgnorePaths("/user/login_sms").Build())
 	return server
 }
+func initRedis() redis.Cmdable {
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
 
-func initUser(db *gorm.DB) *web.UserHandler {
+	for err := redisClient.Ping(context.Background()).Err(); err != nil; {
+		panic(err)
+	}
+	return redisClient
+
+}
+func initUser(db *gorm.DB, rdb redis.Cmdable) *web.UserHandler {
 	// 初始化数据库
 	ud := dao.NewUserDao(db)
-	repo := repository.NewUserRepository(ud)
+	uc := cache.NewUserCache(rdb)
+	cc := cache.NewCodeCache(rdb)
+	repo := repository.NewUserRepository(ud, uc)
+	codeRepo := repository.NewCodeRepository(cc)
 	svc := service.NewUserService(repo)
-	u := web.NewUserHandler(svc)
+	//client := tencent.NewSmsClient()
+	smsSvc := memory.NewService()
+	codeSvc := service.NewCodeService(codeRepo, smsSvc)
+	u := web.NewUserHandler(svc, codeSvc)
 	return u
 }
 

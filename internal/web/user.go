@@ -12,13 +12,16 @@ import (
 	"time"
 )
 
+const biz = "login"
+
 type UserHandler struct {
 	svc         *service.UserService
+	codeSvc     *service.CodeService
 	emailExp    *regexp.Regexp
 	passwordExp *regexp.Regexp
 }
 
-func NewUserHandler(svc *service.UserService) *UserHandler {
+func NewUserHandler(svc *service.UserService, codeSvc *service.CodeService) *UserHandler {
 	const (
 		emailRegexPattern    = "^\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*$"
 		passwordRegexPattern = `^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,}$`
@@ -27,6 +30,7 @@ func NewUserHandler(svc *service.UserService) *UserHandler {
 	passwordExp := regexp.MustCompile(passwordRegexPattern, regexp.None)
 	return &UserHandler{
 		svc:         svc,
+		codeSvc:     codeSvc,
 		emailExp:    emailExp,
 		passwordExp: passwordExp,
 	}
@@ -38,6 +42,8 @@ func (u *UserHandler) RegisterRoutes(server *gin.Engine) {
 	ug.POST("/login", u.Login)
 	ug.POST("/edit", u.Edit)
 	ug.GET("/profile", u.Profile)
+	ug.POST("/login_sms/code/send", u.SendLoginSmsCode)
+	ug.POST("/login_sms", u.LoginSms)
 }
 
 func (u *UserHandler) Signup(c *gin.Context) {
@@ -81,7 +87,7 @@ func (u *UserHandler) Signup(c *gin.Context) {
 		Email:    req.Email,
 		Password: req.Password,
 	})
-	if errors.Is(err, service.ErrUserDuplicateEmail) {
+	if errors.Is(err, service.ErrUserDuplicate) {
 		c.String(http.StatusOK, "邮箱已存在")
 		return
 	}
@@ -110,25 +116,34 @@ func (u *UserHandler) Login(c *gin.Context) {
 		c.String(http.StatusOK, "系统错误")
 		return
 	}
+	err, tokenStr := u.setJwtToken(c, user.Id)
+	if err != nil {
+		c.String(http.StatusOK, "系统错误")
+		return
+	}
+	fmt.Println(tokenStr)
+	c.JSON(http.StatusOK, gin.H{
+		"token": tokenStr,
+	})
+
+}
+
+func (u *UserHandler) setJwtToken(c *gin.Context, uid int64) (error, string) {
 	claims := UserClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
 		},
-		UserId: user.Id,
+		UserId: uid,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
 	tokenStr, err := token.SignedString([]byte("95osj3fUD7fo0mlYdDbncXz4VD2igvf0"))
 	if err != nil {
 		c.String(http.StatusOK, "系统错误")
-		return
+		return err, ""
 	}
 
 	c.Header("x-jwt-token", tokenStr)
-	//fmt.Println(tokenStr)
-	//c.JSON(http.StatusOK, gin.H{
-	//	"token": tokenStr,
-	//})
-
+	return nil, tokenStr
 }
 func (u *UserHandler) Edit(c *gin.Context) {
 	type EditReq struct {
@@ -173,6 +188,90 @@ func (u *UserHandler) Profile(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"userId": claims.UserId,
+	})
+}
+func (u *UserHandler) SendLoginSmsCode(c *gin.Context) {
+	type SmsCodeRequest struct {
+		Phone string `json:"phone"`
+	}
+	var req SmsCodeRequest
+	//bind方法会根据content-type来解析你的数据到req里面
+	//解析错误，直接就会返回4xx错误
+	if err := c.Bind(&req); err != nil {
+		return
+	}
+	if req.Phone == "" {
+		c.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "手机号不能为空",
+		})
+		return
+	}
+	err := u.codeSvc.Send(c, biz, req.Phone)
+	switch {
+	case err == nil:
+		c.JSON(http.StatusOK, Result{
+			//Code: 0,
+			Msg: "发送验证码成功",
+		})
+		return
+	case errors.Is(err, service.ErrCacheTooFrequently):
+		c.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "发送过于频繁，请稍后再试",
+		})
+		return
+	default:
+		c.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "系统错误",
+		})
+	}
+
+}
+func (u *UserHandler) LoginSms(c *gin.Context) {
+	type Request struct {
+		Phone string `json:"phone"`
+		Code  string `json:"code"`
+	}
+	var req Request
+	//bind方法会根据content-type来解析你的数据到req里面
+	//解析错误，直接就会返回4xx错误
+	if err := c.Bind(&req); err != nil {
+		return
+	}
+	ok, err := u.codeSvc.Verify(c, biz, req.Phone, req.Code)
+	if err != nil {
+		c.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "系统错误",
+		})
+		return
+	}
+	if !ok {
+		c.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "验证码错误",
+		})
+		return
+	}
+	user, err := u.svc.FindOrCreate(c, req.Phone)
+	if err != nil {
+		c.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "系统错误",
+		})
+		return
+	}
+	if err, _ = u.setJwtToken(c, user.Id); err != nil {
+		c.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "系统错误",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, Result{
+		Msg: "验证码校验成功",
 	})
 }
 
